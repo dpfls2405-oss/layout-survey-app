@@ -31,6 +31,13 @@ function pick(row, headerMap, field) {
   return String(row[header] ?? '').trim()
 }
 
+function parseModelFromFilename(filename) {
+  const base = filename.replace(/\.[^.]+$/, '')
+  const parts = base.split('_')
+  if (parts.length >= 2) return parts[0]
+  return ''
+}
+
 export async function parseBomFile(file) {
   const isCsv = /\.csv$/i.test(file.name) || file.type === 'text/csv'
   const wb = isCsv
@@ -49,6 +56,7 @@ export async function parseBomFile(file) {
 
   let modelName = ''
   let skippedCount = 0
+  const filenameModel = parseModelFromFilename(file.name)
 
   // 1단계: 모든 행을 파싱 (중복 품목코드 허용)
   const rawItems = []
@@ -131,6 +139,8 @@ export async function parseBomFile(file) {
       })
     }
   }
+
+  if (!modelName && filenameModel) modelName = filenameModel
 
   return { items, modelName, headers, headerMap, skippedCount }
 }
