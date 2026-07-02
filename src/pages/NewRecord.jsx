@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Check, Camera, X, Plus, Trash2, Loader2, Link2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Camera, X, Plus, Trash2, Loader2, Link2, Package } from 'lucide-react'
 import { saveRecord, savePhoto, getAllItems, getDistanceMap } from '../db'
 import { compressImage, formatBytes } from '../utils/compressImage'
 import { difficultyIndex, hourlyMoveLoad, transportScore, formatScore, WORK_HOURS_PER_DAY } from '../utils/transportScore'
@@ -33,6 +33,8 @@ const fStyles = {
 // ──────────────── Step 1: 자재 특성 ────────────────
 function Step1({ data, setData, items, distanceMap }) {
   const u = (k, v) => setData(p => ({ ...p, [k]: v }))
+  const packPhotoRef = useRef()
+  const [packPhotoProcessing, setPackPhotoProcessing] = useState(false)
 
   const handleMaterialName = v => {
     const matched = items.find(it => it.materialName.trim().toLowerCase() === v.trim().toLowerCase())
@@ -61,17 +63,34 @@ function Step1({ data, setData, items, distanceMap }) {
         itemId: matched ? matched.id : undefined,
         partNo: matched && !p.partNo ? matched.partNo : p.partNo,
         modelName: matched && !p.modelName ? matched.modelName : p.modelName,
-        shopName: matched && !p.shopName ? matched.shopName : p.shopName,
         moves,
       }
     })
   }
 
+  const handlePackPhoto = async e => {
+    const file = e.target.files[0]
+    e.target.value = ''
+    if (!file) return
+    setPackPhotoProcessing(true)
+    try {
+      const result = await compressImage(file, { maxSide: 1200, quality: 0.7 })
+      u('packagingPhoto', {
+        dataUrl: result.dataUrl,
+        width: result.width,
+        height: result.height,
+        originalSize: result.originalSize,
+        compressedSize: result.compressedSize,
+      })
+    } catch (err) {
+      alert('사진 처리 실패: ' + (err.message || '알 수 없는 오류'))
+    } finally {
+      setPackPhotoProcessing(false)
+    }
+  }
+
   return (
     <div style={sStyles.stepWrap}>
-      <Field label="Shop명" required>
-        <input value={data.shopName || ''} onChange={e => u('shopName', e.target.value)} placeholder="예) 총조립" />
-      </Field>
       <Field label="Model명">
         <input value={data.modelName || ''} onChange={e => u('modelName', e.target.value)} placeholder="예) CS-777" />
       </Field>
@@ -136,6 +155,43 @@ function Step1({ data, setData, items, distanceMap }) {
             <option value="">선택</option>
             {TRANSPORT_METHODS.map(v => <option key={v}>{v}</option>)}
           </select>
+        </Field>
+      </div>
+
+      <div style={{ borderTop: '1px solid #2e3347', paddingTop: '16px' }}>
+        <Field label="자재포장형태 사진">
+          <input
+            ref={packPhotoRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handlePackPhoto}
+            style={{ display: 'none' }}
+          />
+          {data.packagingPhoto ? (
+            <div style={sStyles.packPhotoWrap}>
+              <div style={{ position: 'relative' }}>
+                <img src={data.packagingPhoto.dataUrl} alt="자재포장형태" style={sStyles.packPhotoImg} />
+                <button style={sStyles.packPhotoRemove} onClick={() => u('packagingPhoto', null)}>
+                  <X size={14} />
+                </button>
+                <div style={sStyles.packPhotoMeta}>
+                  {data.packagingPhoto.width}×{data.packagingPhoto.height} · {formatBytes(data.packagingPhoto.compressedSize)}
+                </div>
+              </div>
+              <button style={sStyles.packPhotoRetake} onClick={() => packPhotoRef.current.click()}>
+                <Camera size={14} /> 다시 촬영
+              </button>
+            </div>
+          ) : (
+            <button style={sStyles.packPhotoBtn} onClick={() => packPhotoRef.current.click()} disabled={packPhotoProcessing}>
+              {packPhotoProcessing ? (
+                <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> 압축 중…</>
+              ) : (
+                <><Package size={18} /> <Camera size={16} /> 포장형태 촬영</>
+              )}
+            </button>
+          )}
         </Field>
       </div>
     </div>
@@ -420,7 +476,6 @@ export default function NewRecord() {
           materialName: prefill.materialName || '',
           partNo: prefill.partNo || '',
           modelName: prefill.modelName || '',
-          shopName: prefill.shopName || '',
           itemId: prefill.id,
           moves,
         })
@@ -435,7 +490,6 @@ export default function NewRecord() {
 
   const validate = () => {
     if (step === 0) {
-      if (!data.shopName?.trim()) return 'Shop명을 입력하세요'
       if (!data.materialName?.trim()) return '자재명을 입력하세요'
     }
     if (step === 1) {
@@ -612,5 +666,30 @@ const sStyles = {
     background: '#3ecf8e15', color: '#3ecf8e',
     fontSize: '11px', fontWeight: '600',
     padding: '4px 8px', borderRadius: '6px',
+  },
+  packPhotoBtn: {
+    background: '#f7954f10', color: '#f7954f', border: '1.5px dashed #f7954f40',
+    padding: '14px', borderRadius: '12px', width: '100%',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+    fontSize: '14px', fontWeight: '600',
+  },
+  packPhotoWrap: { display: 'flex', flexDirection: 'column', gap: '8px' },
+  packPhotoImg: { width: '100%', borderRadius: '10px', objectFit: 'cover', maxHeight: '200px' },
+  packPhotoRemove: {
+    position: 'absolute', top: '8px', right: '8px',
+    background: '#0f1117cc', color: '#f75f5f', border: 'none',
+    borderRadius: '50%', width: '28px', height: '28px',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+  },
+  packPhotoMeta: {
+    position: 'absolute', bottom: '8px', left: '8px',
+    background: '#0f1117cc', color: '#e8eaf0',
+    fontSize: '10px', padding: '3px 8px', borderRadius: '6px',
+    fontFamily: 'monospace',
+  },
+  packPhotoRetake: {
+    background: '#22263a', color: '#8b90a7', border: '1px solid #2e3347',
+    padding: '8px', borderRadius: '8px', fontSize: '12px', fontWeight: '500',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
   },
 }

@@ -78,7 +78,6 @@ export default function RecordDetail() {
         )}
 
         <Section title="① 자재 특성">
-          <Row label="Shop명" value={record.shopName} />
           <Row label="Model명" value={record.modelName} />
           <Row label="자재명" value={record.materialName} />
           <Row label="Part No" value={record.partNo} />
@@ -91,6 +90,12 @@ export default function RecordDetail() {
           <Row label="평균 재고수량" value={record.avgStock} />
           <Row label="회수물 처리" value={record.returnFreq && `${record.returnFreq} 회/일`} />
           <Row label="회수물 처리수단" value={record.returnMethod} />
+          {record.packagingPhoto && (
+            <div style={s.packSection}>
+              <div style={s.packLabel}>자재포장형태</div>
+              <img src={record.packagingPhoto.dataUrl} alt="자재포장형태" style={s.packPhoto} />
+            </div>
+          )}
         </Section>
 
         <Section title="② 이동 경로 (From → To)">
@@ -180,6 +185,10 @@ const s = {
   issues: { background: '#f75f5f0a', border: '1px solid #f75f5f20', borderRadius: '8px', padding: '10px' },
   issuesLabel: { fontSize: '11px', color: '#f75f5f', fontWeight: '600', marginBottom: '4px' },
   issuesText: { fontSize: '13px', color: '#e8eaf0', whiteSpace: 'pre-wrap' },
+
+  packSection: { display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' },
+  packLabel: { fontSize: '12px', color: '#f7954f', fontWeight: '600' },
+  packPhoto: { width: '100%', borderRadius: '8px', objectFit: 'cover', maxHeight: '200px' },
 
   photos: { display: 'flex', flexDirection: 'column', gap: '10px' },
   photoWrap: { display: 'flex', flexDirection: 'column', gap: '4px' },
