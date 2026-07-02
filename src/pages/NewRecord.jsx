@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Check, Camera, X, Plus, Trash2, Loader2, Link2 } from 'lucide-react'
 import { saveRecord, savePhoto, getAllItems, getDistanceMap } from '../db'
 import { compressImage, formatBytes } from '../utils/compressImage'
@@ -391,6 +391,7 @@ function Step4({ data, setData }) {
 // ──────────────── 메인 ────────────────
 export default function NewRecord() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
   const [data, setData] = useState({})
@@ -398,8 +399,33 @@ export default function NewRecord() {
   const [distanceMap, setDistanceMap] = useState({})
 
   useEffect(() => {
-    getAllItems().then(setItems)
-    getDistanceMap().then(setDistanceMap)
+    Promise.all([getAllItems(), getDistanceMap()]).then(([allItems, dMap]) => {
+      setItems(allItems)
+      setDistanceMap(dMap)
+      const prefill = location.state?.prefill
+      if (prefill) {
+        const routes = prefill.routes || []
+        let moves
+        if (routes.length > 0) {
+          moves = routes.map(r => ({
+            from: r.from || '', to: r.to || '',
+            distance: dMap[`${r.from}__${r.to}`] || '',
+            time: '', freq: '', note: '',
+          }))
+        } else if (prefill.fromArea || prefill.toArea) {
+          const dk = `${prefill.fromArea}__${prefill.toArea}`
+          moves = [{ from: prefill.fromArea || '', to: prefill.toArea || '', distance: dMap[dk] || '', time: '', freq: '', note: '' }]
+        }
+        setData({
+          materialName: prefill.materialName || '',
+          partNo: prefill.partNo || '',
+          modelName: prefill.modelName || '',
+          shopName: prefill.shopName || '',
+          itemId: prefill.id,
+          moves,
+        })
+      }
+    })
   }, [])
 
   const areaList = [...new Set([

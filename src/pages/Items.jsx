@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Upload, Trash2, CheckCircle2, XCircle, FileSpreadsheet } from 'lucide-react'
+import { ArrowLeft, Upload, Trash2, CheckCircle2, XCircle, FileSpreadsheet, ClipboardEdit } from 'lucide-react'
 import { getAllItems, upsertItemsForModel, deleteItem, getAllRecords } from '../db'
 import { parseBomFile } from '../utils/parseBom'
 
@@ -78,6 +78,10 @@ export default function Items() {
     if (!confirm('이 품목을 목록에서 삭제할까요?')) return
     await deleteItem(id)
     load()
+  }
+
+  const startSurvey = (item) => {
+    navigate('/new', { state: { prefill: item } })
   }
 
   const surveyedCount = items.filter(it => coverage[it.id] > 0).length
@@ -184,7 +188,7 @@ export default function Items() {
                 <div style={s.list}>
                   {g.items.map(it => (
                     <div key={it.id} style={s.itemCard}>
-                      <div style={{ minWidth: 0 }}>
+                      <div style={{ minWidth: 0, flex: 1, cursor: 'pointer' }} onClick={() => startSurvey(it)}>
                         <div style={s.itemName}>{it.materialName}</div>
                         <div style={s.itemSub}>
                           {[it.partNo, it.materialAccount].filter(Boolean).join(' · ') || '-'}
@@ -192,13 +196,16 @@ export default function Items() {
                           {(it.routes || []).length > 1 && <span style={s.waypointTag}> 경유</span>}
                         </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                         {coverage[it.id] > 0 ? (
                           <span style={s.surveyedBadge}>조사 {coverage[it.id]}건</span>
                         ) : (
                           <span style={s.unsurveyedBadge}>미조사</span>
                         )}
-                        <button style={s.deleteBtn} onClick={() => handleDelete(it.id)}>
+                        <button style={s.surveyBtn} onClick={() => startSurvey(it)} title="조사 시작">
+                          <ClipboardEdit size={14} />
+                        </button>
+                        <button style={s.deleteBtn} onClick={(e) => { e.stopPropagation(); handleDelete(it.id) }}>
                           <Trash2 size={13} />
                         </button>
                       </div>
@@ -254,6 +261,7 @@ const s = {
   itemSub: { fontSize: '11px', color: '#8b90a7', marginTop: '2px' },
   surveyedBadge: { fontSize: '11px', color: '#3ecf8e', background: '#3ecf8e15', padding: '3px 8px', borderRadius: '6px', whiteSpace: 'nowrap' },
   unsurveyedBadge: { fontSize: '11px', color: '#f75f5f', background: '#f75f5f15', padding: '3px 8px', borderRadius: '6px', whiteSpace: 'nowrap' },
+  surveyBtn: { background: '#4f8ef715', color: '#4f8ef7', padding: '5px', borderRadius: '6px', display: 'flex', cursor: 'pointer' },
   deleteBtn: { background: '#f75f5f15', color: '#f75f5f', padding: '5px', borderRadius: '6px', display: 'flex' },
   waypointTag: { color: '#f7954f', background: '#f7954f15', padding: '1px 5px', borderRadius: '4px', fontSize: '10px', fontWeight: '600', marginLeft: '4px' },
 }
